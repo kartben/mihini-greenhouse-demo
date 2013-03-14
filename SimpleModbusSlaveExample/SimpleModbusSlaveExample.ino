@@ -1,12 +1,6 @@
 #include <SimpleModbusSlave.h>
 #include <Servo.h> 
 
-#define  ledPin  10 // onboard led 
-#define  buttonPin  7 // push button
-
-Servo myservo;  // create servo object to control a servo 
-#define servoPin  9 
-
 /* This example code has 9 holding registers. 6 analogue inputs, 1 button, 1 digital output
    and 1 register to indicate errors encountered since started.
    Function 5 (write single coil) is not implemented so I'm using a whole register
@@ -58,50 +52,74 @@ enum
 {     
   // just add or remove registers and your good to go...
   // The first register starts at address 0
-  ADC0,     
-  ADC1,        
-  ADC2,
-  ADC3,
-  ADC4,
-  ADC5,  
-  LED_STATE,
-  BUTTON_STATE,
+  ADC0,  // @ 0
+  ADC1,  // @ 1
+  ADC2,  // @ 2
+  ADC3,  // @ 3
+  ADC4,  // @ 5
+  ADC5,  // @ 6
+  
+  GPO02, // @ 6
+  GPO03, // @ 7
+  GPO04, // @ 8
+  GPO05, // @ 9
+  GPO06, // @ 10
+  GPO07, // @ 11
+
+  GPI08, // @ 12
+  GPI09, // @ 13
+  GPI10, // @ 14
+  GPI11, // @ 15
+  GPI12, // @ 16
+  
+  SERVO, // @ 17
+
   TOTAL_ERRORS,
   // leave this one
   TOTAL_REGS_SIZE 
   // total number of registers for function 3 and 16 share the same register array
 };
 
-unsigned int holdingRegs[TOTAL_REGS_SIZE]; // function 3 and 16 register array
-////////////////////////////////////////////////////////////
+Servo myservo;  // create servo object to control a servo 
 
+// servo position
 #define CLOSED 142
 #define OPENED 42
 int previousServoPosition = CLOSED;
 
+unsigned int holdingRegs[TOTAL_REGS_SIZE]; // function 3 and 16 register array
+
+
+////////////////////////////////////////////////////////////
+
 void setup()
 {
-  /* parameters(long baudrate, 
-                unsigned char ID, 
-                unsigned char transmit enable pin, 
-                unsigned int holding registers size)
-                x
-     The transmit enable pin is used in half duplex communication to activate a MAX485 or similar
-     to deactivate this mode use any value < 2 because 0 & 1 is reserved for Rx & Tx
-  */
   
-  Serial.begin(9600);
-  Serial.println("Ready") ;
+  // GPIO setup
+
+  // 2-> 7 DIGIGTAL OUTPUT  
+  for (byte i=2;i<8;i++) 
+  {
+    pinMode(i, OUTPUT);  
+  }
   
+  // 8 -> 12 DIGIGTAL INPUT
+  for (byte i=8;i<13;i++)
+  {
+    pinMode(i, INPUT);  
+  }
+
+  myservo.attach(13);
+  myservo.write(previousServoPosition);
+  
+  // setup the serial link and the modbus lib
+  Serial.begin(9600);  
   delay(50);
   
   modbus_configure(9600, 1, 2, TOTAL_REGS_SIZE);
-  pinMode(ledPin, OUTPUT);
-  pinMode(buttonPin, INPUT);
 
   delay(50);
-  myservo.attach(servoPin);
-  myservo.write(previousServoPosition);
+  Serial.println("Ready") ;
 
 }
 
@@ -111,42 +129,45 @@ void loop()
   // count since the slave started. You don't have to use it but it's useful
   // for fault finding by the modbus master.
   holdingRegs[TOTAL_ERRORS] = modbus_update(holdingRegs);
+  
   for (byte i = 0; i < 6; i++)
   {
     holdingRegs[i] = analogRead(i);
     delayMicroseconds(500);	     
   }
   
-  byte buttonState = digitalRead(buttonPin); // read button states
+  // write GPO2 to 7 from the modbus register status
+  for (byte i = 0; i < 6; i++)
+  {
+    digitalWrite(i+2,holdingRegs[i+6] == 0 ? LOW : HIGH); 
+  }
   
-  // assign the buttonState value to the holding register
-  holdingRegs[BUTTON_STATE] = buttonState; 
+  // set the modubs register from the GPI8 to 12
+  for (byte i = 0; i < 5; i++)
+  {
+    holdingRegs[i+12] = digitalRead(i+8); 
+  }
   
-  // read the LED_STATE register value and set the onboard LED high or low with function 16
-  byte ledState = holdingRegs[LED_STATE]; 
-  
-  if (ledState) // set led 
-  {		  
-    digitalWrite(ledPin, HIGH);
+  // servo control
+  if (holdingRegs[17])
+  {
     if(previousServoPosition == CLOSED)
     {
-      while(previousServoPosition > OPENED) {
+      while(previousServoPosition > OPENED) 
+      {
         myservo.write(previousServoPosition--);
         delay (20);
       }
     }
-  } 
-    
-  if (ledState == 0/* || buttonState*/) // reset led
-  {
-    digitalWrite(ledPin, LOW);
-     if(previousServoPosition == OPENED) {
-     while(previousServoPosition < CLOSED) {
+  } else {
+    if(previousServoPosition == OPENED)
+    {
+      while(previousServoPosition < CLOSED)
+      {
         myservo.write(previousServoPosition++);
         delay (20);
       }
     }
-    holdingRegs[LED_STATE] = 0;
   }
 }
 
