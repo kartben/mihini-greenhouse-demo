@@ -133,7 +133,9 @@ void loop()
   for (byte i = 0; i < 6; i++)
   {
     holdingRegs[i] = analogRead(i);
-    delayMicroseconds(500);	     
+    delay(10);
+    holdingRegs[i] = analogRead(i);
+    delay(10);
   }
   
   // write GPO2 to 7 from the modbus register status
