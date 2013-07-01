@@ -2,7 +2,7 @@ mihini-greenhouse-demo
 ======================
 
 The SimpleModbusSlaveExample Arduino sketch enables a Modbus slave on an Arduino board.
-It depends on the simple-modbus Arduino library that you need to download from [here] (https://code.google.com/p/simple-modbus/downloads/list) and [install](http://arduino.cc/en/Guide/Libraries) in your Arduino environment.
+It depends on the simple-modbus Arduino library that you need to download (get the version V4) from [here] (https://code.google.com/p/simple-modbus/downloads/list) and [install](http://arduino.cc/en/Guide/Libraries) in your Arduino environment.
 
 When running, the sketch will expose the following Modbus holding registers on its serial port:
 * #00 - A0 (analog input)
